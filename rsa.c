@@ -1,11 +1,9 @@
 #include <stdio.h>
 //#include "RSA.h"
 #include <openssl/pem.h>
-
+#include "arguments.h"
 #include <rsa_encrypt_decrypt.h>
 #include <string.h>
-
-
 
 
 int password_cb(char *buf, int size, int rwflag, void *userdata)
@@ -15,11 +13,28 @@ int password_cb(char *buf, int size, int rwflag, void *userdata)
 }
 
 
-int main()
+int main(int argc, char* argv[])
 {
 
+	struct options opt;
+	init_options(opt);
+
+    parse_arguments(opt, argc, argv);
+
+	int result;
+
+    if(opt.encrypt_flag == 0) {
+		//call encrypting functions
+    }
+    else if(opt.encrypt_flag == 1){
+		//call decrypting function
+    }
+    else {
+        fprintf(stderr, "ERROR: -e or -d is required\n");
+    }
+
     OpenSSL_add_all_algorithms();
-    FILE* fp = fopen("/home/samoa/hamlet/c/RSA/keys/public.pem","r");
+    FILE* fp = fopen("./keys/public.pem", "r");
 
     if (fp == NULL) printf("sdsds");
 
@@ -40,7 +55,7 @@ int main()
     RSA_EncDec_block(testm, strlen(testm), rsa->e, rsa->n, &out, &outsize);
 
 
-    FILE* pfp = fopen("/home/samoa/hamlet/c/RSA/keys/private.pem","r");
+    FILE* pfp = fopen("./keys/private.pem","r");
 
     if (pfp == NULL) printf("sdsds");
 
@@ -51,7 +66,6 @@ int main()
         fclose(pfp);
         return 1;
     }
-
 
     RSA_EncDec_block(out, outsize, prsa->d, prsa->n, &out, &outsize);
 
@@ -64,3 +78,4 @@ int main()
 
     return 0;
 }
+
