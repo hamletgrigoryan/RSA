@@ -1,10 +1,8 @@
 #include <stdio.h>
-//#include "RSA.h"
 #include <openssl/pem.h>
 #include "arguments.h"
 #include <rsa_encrypt_decrypt.h>
 #include <string.h>
-
 
 int password_cb(char *buf, int size, int rwflag, void *userdata)
 {
@@ -12,69 +10,67 @@ int password_cb(char *buf, int size, int rwflag, void *userdata)
     return strlen(buf);
 }
 
-
 int main(int argc, char* argv[])
 {
-
-	struct options opt;
-	init_options(opt);
-
-    parse_arguments(opt, argc, argv);
-
-	int result;
-
-    if(opt.encrypt_flag == 0) {
-		//call encrypting functions
-    }
-    else if(opt.encrypt_flag == 1){
-		//call decrypting function
-    }
-    else {
-        fprintf(stderr, "ERROR: -e or -d is required\n");
-    }
-
-    OpenSSL_add_all_algorithms();
+	OpenSSL_add_all_algorithms();
     FILE* fp = fopen("./keys/public.pem", "r");
 
-    if (fp == NULL) printf("sdsds");
+    if (fp == NULL) {
+		fprintf(stderr, "can't open keys file");
+		exit(1);
+	}
 
     RSA *rsa = PEM_read_RSA_PUBKEY(fp, NULL, NULL, NULL);
 
     if (rsa == NULL) {
-        printf("error load public key");
+        fprintf(stderr, "can't load public key");
         fclose(fp);
-        return 1;
+        exit(1);
     }
     fclose(fp);
 
-    const char* testm = "Hello test";
+	struct options opt;
+	init_options(opt);
+
+	const char* testm = fgets(opt.input_file);
 
     void* out;
     size_t outsize;
 
-    RSA_EncDec_block(testm, strlen(testm), rsa->e, rsa->n, &out, &outsize);
+    parse_arguments(opt, argc, argv);
 
+	FILE* pfp = fopen("./keys/private.pem","r");
 
-    FILE* pfp = fopen("./keys/private.pem","r");
+    if (pfp == NULL) {
+		fprintf(stderr, "can't open private key file");
+		exit(1);
+	}
 
-    if (pfp == NULL) printf("sdsds");
+	RSA *prsa = PEM_read_RSAPrivateKey(pfp, NULL, password_cb, opt.password);
 
-    RSA *prsa = PEM_read_RSAPrivateKey(pfp, NULL, password_cb, "1235");
-
-    if (prsa == NULL) {
-        printf("error load pivate key\n");
+	if (prsa == NULL) {
+        fprintf(stderr, "can't load pivate key\n");
         fclose(pfp);
-        return 1;
+        exit(1);
     }
 
-    RSA_EncDec_block(out, outsize, prsa->d, prsa->n, &out, &outsize);
+    if(opt.encrypt_flag == 0) {
+		RSA_EncDec_block(testm, strlen(testm), rsa->e, rsa->n, &out, &outsize);
+    }
+    else if(opt.encrypt_flag == 1) {					
+    	RSA_EncDec_block(out, outsize, prsa->d, prsa->n, &out, &outsize);
+    }
+    else {
+        fprintf(stderr, "ERROR: -e or -d is required\n");
+    }        
 
+/*
     size_t i = 0;
     for (; i < outsize; ++i) {
         printf("%c", ((char*)out)[i]);
     }
     printf("%c", '\n');
-
+*/
 
     return 0;
 }

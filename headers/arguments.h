@@ -7,9 +7,9 @@ struct options {
     int output_flag;   // console 0, file 1
     int key_flag;      // default 0, user 1 
 	int passwd_flag;   // default 0, user 1
-    char* input_file_path;
-    char* output_file_path;
-    char* key_file_path;
+    FILE* input_file;
+    FILE* output_file;
+    FILE* key_file;
 	char* password;
 };
 
