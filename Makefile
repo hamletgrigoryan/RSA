@@ -4,11 +4,11 @@ LIBS=-lcrypto
 INCLUDES=-I./headers 
 TARGET=./bin/rsa 
 
-SRC=rsa.c src/rsa_encrypt_decrypt.c 
+SRC=rsa.c src/rsa_encrypt_decrypt.c src/blocking.c
 
 
 build : $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $(CFLAGS) $(LIBS) $(INCLUDES) $(SRC)
+	$(CC) $(CFLAGS) -o $(TARGET) $(LIBS) $(INCLUDES) $(SRC)
 
 clean : 
 	rm -rf ./bin/*

@@ -1,50 +1,91 @@
 #include <stdio.h>
-//#include "RSA.h"
 #include <openssl/pem.h>
-
-#include <rsa_encrypt_decrypt.h>
 #include <string.h>
 
+#include <rsa_encrypt_decrypt.h>
+#include <blocking.h>
+#include <assert.h>
 
-
-
-int password_cb(char *buf, int size, int rwflag, void *userdata)
+static int password_cb(char *buf, int size, int rwflag, void *userdata)
 {
     strcpy(buf, (char *)userdata);
     return strlen(buf);
 }
 
+static int load_rsa_keys(int is_encrypt, BIGNUM **e, BIGNUM **n)
+{
+    OpenSSL_add_all_algorithms();
+    FILE* fp = is_encrypt ? fopen("./keys/public.pem","r") : fopen("./keys/private.pem","r");
+
+    if (fp == NULL) {
+        return 1;
+    }
+
+    RSA *rsa = is_encrypt ? PEM_read_RSA_PUBKEY(fp, NULL, NULL, NULL) : PEM_read_RSAPrivateKey(fp, NULL, password_cb, "12345");
+    fclose(fp);
+    if (rsa == NULL) {
+        return 2;
+    }
+    *n = rsa->n;
+    *e = is_encrypt ? rsa->e : rsa->d;
+    return 0;
+}
 
 int main()
 {
-
-    OpenSSL_add_all_algorithms();
-    FILE* fp = fopen("/home/samoa/hamlet/c/RSA/keys/public.pem","r");
-
-    if (fp == NULL) printf("sdsds");
-
-    RSA *rsa = PEM_read_RSA_PUBKEY(fp, NULL, NULL, NULL);
-
-    if (rsa == NULL) {
-        printf("error load public key");
-        fclose(fp);
+    const char* testm = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaasdsdsdsdasfsadfasdfsdafasdfasdfasdfasdfsadfsadf";
+    
+    BIGNUM* e;
+    BIGNUM* n;
+    if (load_rsa_keys(1, &e, &n) != 0) {
         return 1;
     }
-    fclose(fp);
+    size_t b_size = BN_num_bytes(n);
 
-    const char* testm = "Hello test";
+    size_t m_size = strlen(testm) + 1;
 
-    void* out;
-    size_t outsize;
+    struct message_blocks* b = create_message_bloks(m_size, b_size);
 
-    RSA_EncDec_block(testm, strlen(testm), rsa->e, rsa->n, &out, &outsize);
+    init_blocks(testm, m_size, b);
+    
+    size_t o_size = b->size * b->b_size;
+    
+    void* out_message = malloc(o_size); 
+
+    int ind = 0;
+    for (; ind < b->size; ++ind) {
+        void* out;
+        size_t outsize;
+        RSA_EncDec_block(b->bloks[ind], b->b_size, e, n, &out, &outsize);
+        printf("\nOUT SIZE = %d m = %s\n", outsize, b->bloks[ind]);
+        assert(b_size == outsize);
+        memcpy(((char*)out_message) + ind * outsize, out, outsize);
+    }
+
+    if (load_rsa_keys(0, &e, &n) != 0) {
+        return 1;
+    }
+    
+    ind = 0;
+    for (; ind < b->size; ++ind) {
+        void* out;
+        size_t outsize;
+        printf("\nOUT SIZE = %d m = %s\n", outsize, b->bloks[ind]);
+        RSA_EncDec_block(b->bloks[ind], b->b_size, e, n, &out, &outsize);
+        printf("\nOUT SIZE = %d m = %s\n", outsize, b->bloks[ind]);
+        assert(b_size == outsize);
+        memcpy(((char*)out_message) + ind * b_size, out, b_size);
+    }
+
+    printf("------------------------%s\n", out_message);
 
 
-    FILE* pfp = fopen("/home/samoa/hamlet/c/RSA/keys/private.pem","r");
+/*
+    FILE* pfp = fopen("./keys/private.pem","r");
 
     if (pfp == NULL) printf("sdsds");
 
-    RSA *prsa = PEM_read_RSAPrivateKey(pfp, NULL, password_cb, "1235");
+    RSA *prsa = PEM_read_RSAPrivateKey(pfp, NULL, password_cb, "12345");
 
     if (prsa == NULL) {
         printf("error load pivate key\n");
@@ -61,6 +102,6 @@ int main()
     }
     printf("%c", '\n');
 
-
+*/
     return 0;
 }
